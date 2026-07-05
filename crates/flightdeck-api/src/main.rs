@@ -1,6 +1,6 @@
 mod routes;
 
-use axum::{routing::get, Router};
+use axum::{routing::{get, post}, Router};
 use tower_http::cors::CorsLayer;
 use tracing_subscriber;
 use std::sync::Arc;
@@ -16,11 +16,12 @@ async fn main() -> anyhow::Result<()> {
     let collector = Arc::new(Collector::new(storage));
 
     let app = Router::new()
+        .route("/api/health", get(routes::health))
         .route("/api/sessions", get(routes::list_sessions))
         .route("/api/sessions/:id", get(routes::get_session))
         .route("/api/sessions/:id/events", get(routes::get_events))
         .route("/api/metrics", get(routes::get_metrics))
-        .route("/api/health", get(routes::health))
+        .route("/api/import/claude", post(routes::import_claude_sessions))
         .layer(CorsLayer::permissive())
         .with_state(collector);
 

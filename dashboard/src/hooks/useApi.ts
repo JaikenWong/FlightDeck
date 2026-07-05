@@ -1,10 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ApiResponse, Session, SessionSummary, Event, Metrics } from '../types'
 
 const API_BASE = '/api'
 
 async function fetchApi<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`)
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  const json: ApiResponse<T> = await res.json()
+  if (!json.success) throw new Error(json.error || 'Unknown error')
+  return json.data as T
+}
+
+async function postApi<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST' })
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   const json: ApiResponse<T> = await res.json()
   if (!json.success) throw new Error(json.error || 'Unknown error')
@@ -38,5 +46,23 @@ export function useMetrics() {
   return useQuery({
     queryKey: ['metrics'],
     queryFn: () => fetchApi<Metrics>('/metrics'),
+  })
+}
+
+interface ImportResult {
+  total_found: number
+  imported: number
+  errors: number
+}
+
+export function useImportClaudeSessions() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => postApi<ImportResult>('/import/claude'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['metrics'] })
+    },
   })
 }

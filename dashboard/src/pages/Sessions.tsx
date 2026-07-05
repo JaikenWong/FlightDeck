@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { useSessions } from '../hooks/useApi'
-import { Bot, Clock, FileCode, AlertCircle } from 'lucide-react'
+import { useSessions, useImportClaudeSessions } from '../hooks/useApi'
+import { Bot, Clock, FileCode, AlertCircle, Download } from 'lucide-react'
 import type { AgentType } from '../types'
 
 const agentColors: Record<AgentType, string> = {
@@ -24,17 +24,42 @@ function formatDuration(ms: number | null): string {
 
 export default function Sessions() {
   const { data: sessions, isLoading, error } = useSessions()
+  const importMutation = useImportClaudeSessions()
 
   if (isLoading) return <div className="text-center py-12 text-gray-500">Loading sessions...</div>
   if (error) return <div className="text-center py-12 text-red-500">Error: {String(error)}</div>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Sessions</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
+        <button
+          onClick={() => importMutation.mutate()}
+          disabled={importMutation.isPending}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Download className="w-4 h-4" />
+          {importMutation.isPending ? 'Importing...' : 'Import Claude Sessions'}
+        </button>
+      </div>
+
+      {importMutation.isSuccess && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
+          Imported {importMutation.data.imported} sessions ({importMutation.data.total_found} found)
+        </div>
+      )}
+
+      {importMutation.isError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          Error: {String(importMutation.error)}
+        </div>
+      )}
+
       {!sessions || sessions.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <Bot className="w-12 h-12 mx-auto mb-3" />
           <p>No sessions recorded yet</p>
+          <p className="text-sm mt-2">Click "Import Claude Sessions" to load your history</p>
         </div>
       ) : (
         <div className="space-y-3">

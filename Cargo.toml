@@ -5,6 +5,7 @@ members = [
     "crates/flightdeck-storage",
     "crates/flightdeck-api",
     "crates/flightdeck-adapters",
+    "crates/flightdeck-parser",
 ]
 resolver = "2"
 

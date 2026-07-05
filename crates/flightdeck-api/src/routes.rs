@@ -1,9 +1,11 @@
 use axum::{extract::{Path, State}, Json};
 use std::sync::Arc;
+use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use flightdeck_collector::Collector;
 use flightdeck_core::{Session, SessionSummary, Event, Metrics};
+use flightdeck_parser::ClaudeSessionParser;
 
 #[derive(Deserialize)]
 pub struct ListSessionsQuery {
@@ -67,4 +69,55 @@ pub async fn get_metrics(
         Ok(metrics) => Json(ApiResponse::ok(metrics)),
         Err(e) => Json(ApiResponse::err(e.to_string())),
     }
+}
+
+/// Import all Claude sessions from ~/.claude/projects/
+pub async fn import_claude_sessions(
+    State(collector): State<Arc<Collector>>,
+) -> Json<ApiResponse<ImportResult>> {
+    let claude_dir = dirs::home_dir()
+        .map(|h| h.join(".claude"))
+        .unwrap_or_else(|| PathBuf::from("~/.claude"));
+
+    let parser = ClaudeSessionParser::new(claude_dir);
+
+    match parser.parse_all_sessions() {
+        Ok(parsed) => {
+            let mut imported = 0;
+            let mut errors = 0;
+
+            for ps in &parsed {
+                // Create session
+                if let Err(e) = collector.storage().create_session(&ps.session) {
+                    tracing::error!("Failed to create session {}: {}", ps.session.id, e);
+                    errors += 1;
+                    continue;
+                }
+
+                // Insert events
+                for event in &ps.events {
+                    if let Err(e) = collector.storage().insert_event(event) {
+                        tracing::error!("Failed to insert event: {}", e);
+                        errors += 1;
+                    }
+                }
+
+                imported += 1;
+            }
+
+            Json(ApiResponse::ok(ImportResult {
+                total_found: parsed.len(),
+                imported,
+                errors,
+            }))
+        }
+        Err(e) => Json(ApiResponse::err(e.to_string())),
+    }
+}
+
+#[derive(Serialize)]
+pub struct ImportResult {
+    pub total_found: usize,
+    pub imported: usize,
+    pub errors: usize,
 }

@@ -1,0 +1,17 @@
+[package]
+name = "flightdeck-parser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+
+[dependencies]
+flightdeck-core = { path = "../flightdeck-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+walkdir = "2.5"

@@ -25,6 +25,11 @@ impl Collector {
         }
     }
 
+    /// Get reference to storage
+    pub fn storage(&self) -> &Storage {
+        &self.storage
+    }
+
     /// Register an agent adapter
     pub async fn register_adapter(&self, adapter: Box<dyn AgentAdapter>) {
         let agent_type = adapter.agent_type();
