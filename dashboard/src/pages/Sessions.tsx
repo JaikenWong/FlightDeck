@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { useSessions } from '../hooks/useApi'
-import { formatDistanceToNow } from 'date-fns'
 import { Bot, Clock, FileCode, AlertCircle } from 'lucide-react'
 import type { AgentType } from '../types'
 
