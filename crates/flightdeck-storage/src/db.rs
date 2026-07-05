@@ -188,6 +188,7 @@ impl Storage {
         let events = stmt.query_map(params![session_id], |row| {
             let event_type_str: String = row.get(3)?;
             let event_type: EventType = serde_json::from_str(&event_type_str)
+                .or_else(|_| serde_json::from_str(&format!("\"{}\"", event_type_str)))
                 .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?;
             
             let payload_str: String = row.get(4)?;
@@ -219,6 +220,7 @@ impl Storage {
         let events = stmt.query_map(params![session_id, event_type_str], |row| {
             let event_type_str: String = row.get(3)?;
             let event_type: EventType = serde_json::from_str(&event_type_str)
+                .or_else(|_| serde_json::from_str(&format!("\"{}\"", event_type_str)))
                 .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?;
             
             let payload_str: String = row.get(4)?;
