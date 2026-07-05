@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useSessions, useImportClaudeSessions } from '../hooks/useApi'
+import { useSessions, useImportClaudeSessions, useImportCodexSessions } from '../hooks/useApi'
 import { Bot, Clock, FileCode, AlertCircle, Download } from 'lucide-react'
 import type { AgentType } from '../types'
 
@@ -24,7 +24,8 @@ function formatDuration(ms: number | null): string {
 
 export default function Sessions() {
   const { data: sessions, isLoading, error } = useSessions()
-  const importMutation = useImportClaudeSessions()
+  const importClaude = useImportClaudeSessions()
+  const importCodex = useImportCodexSessions()
 
   if (isLoading) return <div className="text-center py-12 text-gray-500">Loading sessions...</div>
   if (error) return <div className="text-center py-12 text-red-500">Error: {String(error)}</div>
@@ -33,25 +34,41 @@ export default function Sessions() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
-        <button
-          onClick={() => importMutation.mutate()}
-          disabled={importMutation.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Download className="w-4 h-4" />
-          {importMutation.isPending ? 'Importing...' : 'Import Claude Sessions'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => importClaude.mutate()}
+            disabled={importClaude.isPending}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            {importClaude.isPending ? 'Importing...' : 'Import Claude'}
+          </button>
+          <button
+            onClick={() => importCodex.mutate()}
+            disabled={importCodex.isPending}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            {importCodex.isPending ? 'Importing...' : 'Import Codex'}
+          </button>
+        </div>
       </div>
 
-      {importMutation.isSuccess && (
+      {importClaude.isSuccess && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
-          Imported {importMutation.data.imported} sessions ({importMutation.data.total_found} found)
+          Imported {importClaude.data.imported} Claude sessions ({importClaude.data.total_found} found)
         </div>
       )}
 
-      {importMutation.isError && (
+      {importCodex.isSuccess && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
+          Imported {importCodex.data.imported} Codex sessions ({importCodex.data.total_found} found)
+        </div>
+      )}
+
+      {(importClaude.isError || importCodex.isError) && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          Error: {String(importMutation.error)}
+          Error: {String(importClaude.error || importCodex.error)}
         </div>
       )}
 

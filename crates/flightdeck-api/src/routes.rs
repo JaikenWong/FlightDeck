@@ -5,12 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use flightdeck_collector::Collector;
 use flightdeck_core::{Session, SessionSummary, Event, Metrics};
-use flightdeck_parser::ClaudeSessionParser;
-
-#[derive(Deserialize)]
-pub struct ListSessionsQuery {
-    pub limit: Option<i64>,
-}
+use flightdeck_parser::{ClaudeSessionParser, CodexSessionParser};
 
 #[derive(Serialize)]
 pub struct ApiResponse<T> {
@@ -87,14 +82,12 @@ pub async fn import_claude_sessions(
             let mut errors = 0;
 
             for ps in &parsed {
-                // Create session
                 if let Err(e) = collector.storage().create_session(&ps.session) {
                     tracing::error!("Failed to create session {}: {}", ps.session.id, e);
                     errors += 1;
                     continue;
                 }
 
-                // Insert events
                 for event in &ps.events {
                     if let Err(e) = collector.storage().insert_event(event) {
                         tracing::error!("Failed to insert event: {}", e);
@@ -105,6 +98,50 @@ pub async fn import_claude_sessions(
                 imported += 1;
             }
 
+            tracing::info!("Imported {} Claude sessions", imported);
+            Json(ApiResponse::ok(ImportResult {
+                total_found: parsed.len(),
+                imported,
+                errors,
+            }))
+        }
+        Err(e) => Json(ApiResponse::err(e.to_string())),
+    }
+}
+
+/// Import all Codex sessions from ~/.codex/sessions/
+pub async fn import_codex_sessions(
+    State(collector): State<Arc<Collector>>,
+) -> Json<ApiResponse<ImportResult>> {
+    let codex_dir = dirs::home_dir()
+        .map(|h| h.join(".codex"))
+        .unwrap_or_else(|| PathBuf::from("~/.codex"));
+
+    let parser = CodexSessionParser::new(codex_dir);
+
+    match parser.parse_all_sessions() {
+        Ok(parsed) => {
+            let mut imported = 0;
+            let mut errors = 0;
+
+            for ps in &parsed {
+                if let Err(e) = collector.storage().create_session(&ps.session) {
+                    tracing::error!("Failed to create session {}: {}", ps.session.id, e);
+                    errors += 1;
+                    continue;
+                }
+
+                for event in &ps.events {
+                    if let Err(e) = collector.storage().insert_event(event) {
+                        tracing::error!("Failed to insert event: {}", e);
+                        errors += 1;
+                    }
+                }
+
+                imported += 1;
+            }
+
+            tracing::info!("Imported {} Codex sessions", imported);
             Json(ApiResponse::ok(ImportResult {
                 total_found: parsed.len(),
                 imported,

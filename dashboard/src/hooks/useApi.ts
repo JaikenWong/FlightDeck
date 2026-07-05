@@ -66,3 +66,15 @@ export function useImportClaudeSessions() {
     },
   })
 }
+
+export function useImportCodexSessions() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => postApi<ImportResult>('/import/codex'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['metrics'] })
+    },
+  })
+}

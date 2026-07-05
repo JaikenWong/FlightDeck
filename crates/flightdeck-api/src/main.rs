@@ -22,6 +22,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/sessions/:id/events", get(routes::get_events))
         .route("/api/metrics", get(routes::get_metrics))
         .route("/api/import/claude", post(routes::import_claude_sessions))
+        .route("/api/import/codex", post(routes::import_codex_sessions))
         .layer(CorsLayer::permissive())
         .with_state(collector);
 
