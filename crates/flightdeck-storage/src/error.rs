@@ -14,6 +14,6 @@ pub enum StorageError {
 
 impl From<StorageError> for flightdeck_core::FlightDeckError {
     fn from(err: StorageError) -> Self {
-        flightdeck_core::FlightDeckError::Storage(rusqlite::Error::InvalidParameterName(err.to_string()))
+        flightdeck_core::FlightDeckError::Storage(err.to_string())
     }
 }

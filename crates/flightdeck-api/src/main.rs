@@ -17,8 +17,8 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/api/sessions", get(routes::list_sessions))
-        .route("/api/sessions/{id}", get(routes::get_session))
-        .route("/api/sessions/{id}/events", get(routes::get_events))
+        .route("/api/sessions/:id", get(routes::get_session))
+        .route("/api/sessions/:id/events", get(routes::get_events))
         .route("/api/metrics", get(routes::get_metrics))
         .route("/api/health", get(routes::health))
         .layer(CorsLayer::permissive())

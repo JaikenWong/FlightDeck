@@ -1,4 +1,4 @@
-use flightdeck_core::{Event, EventType, AgentType};
+use flightdeck_core::{Event, AgentType};
 use async_trait::async_trait;
 
 /// Trait for agent-specific adapters

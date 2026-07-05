@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
 
 use flightdeck_core::{Event, EventType, Session, AgentType};
 use flightdeck_storage::Storage;
@@ -54,7 +54,7 @@ impl Collector {
                 .map_err(|e| CollectorError::Adapter(e.to_string()))?;
         }
 
-        self.active_sessions.write().await.insert(session_id.clone(), agent_type);
+        self.active_sessions.write().await.insert(session_id.clone(), agent_type.clone());
         info!("Started session: {} for agent: {:?}", session_id, agent_type);
         Ok(session_id)
     }

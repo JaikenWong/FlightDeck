@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Event type enumeration
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "PascalCase")]
 pub enum EventType {
     SessionStarted,
@@ -53,7 +53,7 @@ impl Event {
 }
 
 /// Agent types
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum AgentType {
     Claude,
@@ -75,6 +75,23 @@ impl std::fmt::Display for AgentType {
             AgentType::Aider => write!(f, "aider"),
             AgentType::Cline => write!(f, "cline"),
             AgentType::Continue => write!(f, "continue"),
+        }
+    }
+}
+
+impl std::str::FromStr for AgentType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "claude" => Ok(AgentType::Claude),
+            "codex" => Ok(AgentType::Codex),
+            "gemini" => Ok(AgentType::Gemini),
+            "opencode" => Ok(AgentType::OpenCode),
+            "aider" => Ok(AgentType::Aider),
+            "cline" => Ok(AgentType::Cline),
+            "continue" => Ok(AgentType::Continue),
+            _ => Err(format!("Unknown agent type: {}", s)),
         }
     }
 }

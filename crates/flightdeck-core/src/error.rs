@@ -3,7 +3,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum FlightDeckError {
     #[error("Storage error: {0}")]
-    Storage(#[from] rusqlite::Error),
+    Storage(String),
 
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),

@@ -1,25 +1,27 @@
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, params, OptionalExtension};
 use flightdeck_core::{Event, EventType, Session, SessionSummary, Metrics, AgentType};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use tracing::{info, debug};
+use std::sync::Mutex;
 
 use crate::error::StorageError;
 
 pub struct Storage {
-    conn: Connection,
+    conn: Mutex<Connection>,
 }
 
 impl Storage {
     pub fn new(db_path: &str) -> Result<Self, StorageError> {
         let conn = Connection::open(db_path)?;
-        let storage = Self { conn };
+        let storage = Self { conn: Mutex::new(conn) };
         storage.init_tables()?;
         Ok(storage)
     }
 
     fn init_tables(&self) -> Result<(), StorageError> {
-        self.conn.execute_batch(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        conn.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS sessions (
                 id TEXT PRIMARY KEY,
@@ -55,7 +57,8 @@ impl Storage {
     }
 
     pub fn create_session(&self, session: &Session) -> Result<(), StorageError> {
-        self.conn.execute(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        conn.execute(
             "INSERT INTO sessions (id, agent_type, project_path, model, branch, started_at, ended_at, duration_ms, event_count, file_count, command_count, failure_count)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             params![
@@ -78,7 +81,8 @@ impl Storage {
     }
 
     pub fn update_session(&self, session: &Session) -> Result<(), StorageError> {
-        self.conn.execute(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        conn.execute(
             "UPDATE sessions SET 
                 ended_at = ?1,
                 duration_ms = ?2,
@@ -102,7 +106,8 @@ impl Storage {
     }
 
     pub fn get_session(&self, session_id: &str) -> Result<Option<Session>, StorageError> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        let mut stmt = conn.prepare(
             "SELECT id, agent_type, project_path, model, branch, started_at, ended_at, duration_ms, event_count, file_count, command_count, failure_count
              FROM sessions WHERE id = ?1"
         )?;
@@ -114,8 +119,12 @@ impl Storage {
                 project_path: row.get(2)?,
                 model: row.get(3)?,
                 branch: row.get(4)?,
-                started_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?).with_timezone(&Utc),
-                ended_at: row.get::<_, Option<String>>(6)?.and_then(|s| DateTime::parse_from_rfc3339(&s).ok()).map(|dt| dt.with_timezone(&Utc)),
+                started_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(5)?)
+                    .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?
+                    .with_timezone(&Utc),
+                ended_at: row.get::<_, Option<String>>(6)?
+                    .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
+                    .map(|dt| dt.with_timezone(&Utc)),
                 duration_ms: row.get(7)?,
                 event_count: row.get(8)?,
                 file_count: row.get(9)?,
@@ -128,7 +137,8 @@ impl Storage {
     }
 
     pub fn list_sessions(&self, limit: i64) -> Result<Vec<SessionSummary>, StorageError> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        let mut stmt = conn.prepare(
             "SELECT id, agent_type, project_path, model, started_at, duration_ms, event_count, failure_count
              FROM sessions ORDER BY started_at DESC LIMIT ?1"
         )?;
@@ -139,7 +149,9 @@ impl Storage {
                 agent_type: row.get::<_, String>(1)?.parse().unwrap_or(AgentType::Claude),
                 project_path: row.get(2)?,
                 model: row.get(3)?,
-                started_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?).with_timezone(&Utc),
+                started_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
+                    .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?
+                    .with_timezone(&Utc),
                 duration_ms: row.get(5)?,
                 event_count: row.get(6)?,
                 failure_count: row.get(7)?,
@@ -150,7 +162,8 @@ impl Storage {
     }
 
     pub fn insert_event(&self, event: &Event) -> Result<(), StorageError> {
-        self.conn.execute(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        conn.execute(
             "INSERT INTO events (id, session_id, timestamp, event_type, payload)
              VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
@@ -166,7 +179,8 @@ impl Storage {
     }
 
     pub fn get_events(&self, session_id: &str) -> Result<Vec<Event>, StorageError> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        let mut stmt = conn.prepare(
             "SELECT id, session_id, timestamp, event_type, payload
              FROM events WHERE session_id = ?1 ORDER BY timestamp"
         )?;
@@ -183,7 +197,9 @@ impl Storage {
             Ok(Event {
                 id: Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_else(|_| Uuid::new_v4()),
                 session_id: row.get(1)?,
-                timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?).with_timezone(&Utc),
+                timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?)
+                    .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?
+                    .with_timezone(&Utc),
                 event_type,
                 payload,
             })
@@ -193,7 +209,8 @@ impl Storage {
     }
 
     pub fn get_events_by_type(&self, session_id: &str, event_type: &EventType) -> Result<Vec<Event>, StorageError> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        let mut stmt = conn.prepare(
             "SELECT id, session_id, timestamp, event_type, payload
              FROM events WHERE session_id = ?1 AND event_type = ?2 ORDER BY timestamp"
         )?;
@@ -211,7 +228,9 @@ impl Storage {
             Ok(Event {
                 id: Uuid::parse_str(&row.get::<_, String>(0)?).unwrap_or_else(|_| Uuid::new_v4()),
                 session_id: row.get(1)?,
-                timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?).with_timezone(&Utc),
+                timestamp: DateTime::parse_from_rfc3339(&row.get::<_, String>(2)?)
+                    .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?
+                    .with_timezone(&Utc),
                 event_type,
                 payload,
             })
@@ -221,7 +240,8 @@ impl Storage {
     }
 
     pub fn get_metrics(&self) -> Result<Metrics, StorageError> {
-        let mut stmt = self.conn.prepare(
+        let conn = self.conn.lock().map_err(|e| StorageError::Parse(e.to_string()))?;
+        let mut stmt = conn.prepare(
             "SELECT 
                 COUNT(*) as total_sessions,
                 COALESCE(SUM(event_count), 0) as total_events,
