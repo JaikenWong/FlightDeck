@@ -1,0 +1,16 @@
+[package]
+name = "flightdeck-adapters"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+
+[dependencies]
+flightdeck-core = { path = "../flightdeck-core" }
+flightdeck-collector = { path = "../flightdeck-collector" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+async-trait = "0.1"

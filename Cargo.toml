@@ -1,0 +1,39 @@
+[workspace]
+members = [
+    "crates/flightdeck-core",
+    "crates/flightdeck-collector",
+    "crates/flightdeck-storage",
+    "crates/flightdeck-api",
+    "crates/flightdeck-adapters",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "FlightDeck - AI Coding Agent Blackbox Recorder"
+
+[workspace.dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Storage
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# API
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
